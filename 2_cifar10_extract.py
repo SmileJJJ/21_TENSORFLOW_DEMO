@@ -20,7 +20,7 @@ __mtime__ = 'None'
                   ┗┻┛  ┗┻┛
 
 ┌───┐   ┌───┬───┬───┬───┐ ┌───┬───┬───┬───┐ ┌───┬───┬───┬───┐ ┌
-│Esc│   │ F1│ F2│ F3│ F4│ │ F5│ F6│ F7│ F8│ │ F9│F10│F11│F12│ │P/S│S L│P/B│  ┌┐    ┌┐    ┌┐  │
+│Esc│   │ F1│ F2│ F3│ F4│ │ F5│ F6│ F7│ F8│ │ F9│F10│F11│F12│ │P/S │S L│P/B│  ┌┐    ┌┐    ┌┐  │
 └───┘   └───┴───┴───┴───┘ └───┴───┴───┴───┘ └───┴───┴───┴───┘ └
 ┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───────┐
 │~ `│! 1│@ 2│# 3│$ 4│% 5│^ 6│& 7│* 8│( 9│) 0│_ -│+ =│ BacSp │ │Ins│Hom│PUp│ │N L│ / │ * │ - │   │
@@ -35,25 +35,39 @@ __mtime__ = 'None'
 └─────┴────┴────┴───────────────────────┴────┴────┴────┴────┘ 
 """
 
+import os
 import tensorflow as tf
+import cifar10_input
+import scipy.misc
 
-with tf.Session() as sess:
-    filename = ['2_read/A.jpg', '2_read/B.jpg', '2_read/C.jpg']
+def inputs_origin(data_dir):
+    filenames = [os.path.join(data_dir, 'data_batch_%d.bin'%i) for i in range(1, 6)]
+    for f in filenames:
+        if not tf.gfile.Exists(f):
+            raise ValueError('Failed to find file:' + f)
+    filename_queue = tf.train.string_input_producer(filenames)
+    readinput = cifar10_input.read_cifar10(filename_queue)
+    reshape_image = tf.cast(readinput.uint8image, tf.float32)
 
-    filename_queue = tf.train.string_input_producer(filename, shuffle=True, num_epochs=5)
+    return reshape_image, filename_queue
 
-    reader = tf.WholeFileReader()
+if __name__ == '__main__':
 
-    key, value = reader.read(filename_queue)
+    with tf.Session() as sess:
+        # 定义协调器
+        coord = tf.train.Coordinator()
+        reshape_image, filename_queue = inputs_origin('cifar10_data/cifar-10-batches-bin')
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        sess.run(tf.global_variables_initializer())
 
-    tf.local_variables_initializer().run()
+        if not os.path.exists('cifar10_data/raw/'):
+            os.makedirs('cifar10_data/raw/')
 
-    threads = tf.train.start_queue_runners(sess=sess)
+        for i in range(30):
+            image_array = sess.run(reshape_image)
+            scipy.misc.toimage(image_array).save('cifar10_data/raw/%d.jpg' % i)
 
-    i = 0
-
-    while True:
-        i += 1
-        image_data = sess.run(value)
-        with open('2_read/test_%d.jpg' % i, 'wb') as f:
-            f.write(image_data)
+        # 请求停止线程
+        coord.request_stop()
+        # 等待直到指定线程停止
+        coord.join(threads)

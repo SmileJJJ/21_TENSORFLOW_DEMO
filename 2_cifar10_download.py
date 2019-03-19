@@ -35,25 +35,12 @@ __mtime__ = 'None'
 └─────┴────┴────┴───────────────────────┴────┴────┴────┴────┘ 
 """
 
+import cifar10
 import tensorflow as tf
 
-with tf.Session() as sess:
-    filename = ['2_read/A.jpg', '2_read/B.jpg', '2_read/C.jpg']
+# tf.app.flags.FLAGS是TensorFlow内部的一个全局变量存储器，同时可以用于命令行参数的处理
+FLAGS = tf.app.flags.FLAGS
 
-    filename_queue = tf.train.string_input_producer(filename, shuffle=True, num_epochs=5)
+FLAGS.data_dir = 'cifar10_data/'
 
-    reader = tf.WholeFileReader()
-
-    key, value = reader.read(filename_queue)
-
-    tf.local_variables_initializer().run()
-
-    threads = tf.train.start_queue_runners(sess=sess)
-
-    i = 0
-
-    while True:
-        i += 1
-        image_data = sess.run(value)
-        with open('2_read/test_%d.jpg' % i, 'wb') as f:
-            f.write(image_data)
+cifar10.maybe_download_and_extract()

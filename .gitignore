@@ -91,6 +91,11 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+MNIST_data/
+cifar10_data/
+2_read/
+2_cifar10_eval/
+2_cifar10_train/
 
 # Spyder project settings
 .spyderproject
